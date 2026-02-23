@@ -1,0 +1,8 @@
+.git
+.gitignore
+node_modules
+output
+draft_assets
+progress.md
+scripts
+*.psd
