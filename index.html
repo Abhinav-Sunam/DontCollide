@@ -5,18 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DontCollide</title>
     <style>
+        :root {
+            --panel-bg: rgba(8, 15, 28, 0.82);
+            --panel-border: rgba(191, 219, 254, 0.38);
+            --panel-text: #e2e8f0;
+            --panel-muted: #bfd8ff;
+            --button-bg: rgba(30, 41, 59, 0.94);
+            --button-border: rgba(191, 219, 254, 0.34);
+            --button-hover: rgba(51, 65, 85, 0.98);
+            --button-strong: linear-gradient(135deg, rgba(14, 116, 144, 0.96), rgba(22, 163, 74, 0.9));
+        }
+
         html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            background: #111827;
+            background: radial-gradient(circle at top, #13304a 0%, #101827 56%, #09111f 100%);
             overflow: hidden;
         }
 
         body {
             display: grid;
             place-items: center;
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
         }
 
         #game-wrap {
@@ -32,6 +44,154 @@
             max-height: 100vh;
             background: #0f172a;
             box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            transition: opacity 180ms ease;
+        }
+
+        body.assets-ready #game-canvas {
+            opacity: 1;
+        }
+
+        #overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: linear-gradient(180deg, rgba(3, 7, 18, 0.24), rgba(3, 7, 18, 0.7));
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+
+        .screen[hidden] {
+            display: none;
+        }
+
+        .screen.loading-screen {
+            background: linear-gradient(180deg, rgba(8, 15, 28, 0.98), rgba(12, 24, 44, 0.95));
+        }
+
+        .panel {
+            width: min(560px, 100%);
+            padding: 28px 28px 24px;
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            background: var(--panel-bg);
+            box-shadow: 0 22px 56px rgba(0, 0, 0, 0.35);
+            color: var(--panel-text);
+            text-align: center;
+        }
+
+        .eyebrow {
+            margin: 0 0 12px;
+            color: #8ec5ff;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .menu-title {
+            margin: 0;
+            font-size: clamp(52px, 7vw, 88px);
+            line-height: 0.95;
+            letter-spacing: -0.05em;
+            color: #f8fafc;
+        }
+
+        .menu-heading {
+            margin: 0;
+            font-size: clamp(32px, 4vw, 46px);
+            line-height: 1;
+            color: #f8fafc;
+        }
+
+        .menu-copy {
+            margin: 16px auto 0;
+            max-width: 460px;
+            color: var(--panel-muted);
+            font-size: 16px;
+            line-height: 1.55;
+        }
+
+        .menu-buttons {
+            display: grid;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .menu-button,
+        .menu-link {
+            border: 1px solid var(--button-border);
+            border-radius: 14px;
+            padding: 13px 16px;
+            background: var(--button-bg);
+            color: var(--panel-text);
+            font: 700 16px/1 "Trebuchet MS", "Segoe UI", sans-serif;
+            cursor: pointer;
+            transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+        }
+
+        .menu-button:hover,
+        .menu-link:hover,
+        #music-controls button:hover {
+            transform: translateY(-1px);
+            background: var(--button-hover);
+        }
+
+        .menu-button.primary {
+            background: var(--button-strong);
+            border-color: rgba(167, 243, 208, 0.42);
+            color: #f8fafc;
+        }
+
+        .menu-button.secondary {
+            background: rgba(17, 24, 39, 0.9);
+        }
+
+        .menu-link {
+            margin-top: 16px;
+            background: transparent;
+        }
+
+        .status-text {
+            min-height: 20px;
+            margin: 14px 0 0;
+            color: #facc15;
+            font-size: 14px;
+        }
+
+        .choice-note {
+            margin: 12px auto 0;
+            max-width: 430px;
+            color: var(--panel-muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 12px;
+            margin-top: 18px;
+            border-radius: 999px;
+            background: rgba(51, 65, 85, 0.92);
+            overflow: hidden;
+        }
+
+        #loading-bar {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #38bdf8 0%, #34d399 100%);
+            transition: width 140ms ease;
         }
 
         #hint {
@@ -40,10 +200,11 @@
             bottom: 12px;
             margin: 0;
             padding: 8px 10px;
-            border-radius: 6px;
+            border-radius: 8px;
             color: #dbeafe;
-            background: rgba(15, 23, 42, 0.75);
+            background: rgba(15, 23, 42, 0.78);
             font: 12px/1.4 "Trebuchet MS", "Segoe UI", sans-serif;
+            z-index: 2;
         }
 
         #music-controls {
@@ -77,16 +238,107 @@
             color: #e2e8f0;
             font: 12px/1 "Trebuchet MS", "Segoe UI", sans-serif;
             cursor: pointer;
+            transition: transform 140ms ease, background 140ms ease;
         }
 
-        #music-controls button:hover {
-            background: rgba(51, 65, 85, 0.95);
+        @media (max-width: 780px) {
+            .panel {
+                padding: 22px 18px 18px;
+            }
+
+            .menu-copy {
+                font-size: 14px;
+            }
+
+            #music-controls {
+                left: 12px;
+                right: 12px;
+                bottom: 12px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            #hint {
+                left: 12px;
+                right: 12px;
+                bottom: 86px;
+            }
         }
     </style>
 </head>
 <body>
     <div id="game-wrap">
         <canvas id="game-canvas" width="1512" height="982"></canvas>
+
+        <div id="overlay" aria-live="polite">
+            <section id="loading-screen" class="screen loading-screen">
+                <div class="panel">
+                    <p class="eyebrow">Preparing Arena</p>
+                    <h1 class="menu-title">DontCollide</h1>
+                    <p id="loading-copy" class="menu-copy">Loading visuals 0 / 5</p>
+                    <div class="progress-track">
+                        <div id="loading-bar"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="start-screen" class="screen" hidden>
+                <div class="panel">
+                    <p class="eyebrow">Gem Rush Arena</p>
+                    <h1 class="menu-title">DontCollide</h1>
+                    <p class="menu-copy">Collect gems, dodge collisions, and pick how you want to play.</p>
+                    <div class="menu-buttons">
+                        <button id="start-play" class="menu-button primary" type="button">Play</button>
+                    </div>
+                    <p class="choice-note">Local mode is ready. Single player adds a gem-hunting AI rival. Online stays visible as a placeholder for later.</p>
+                </div>
+            </section>
+
+            <section id="mode-screen" class="screen" hidden>
+                <div class="panel">
+                    <p class="eyebrow">Choose a Mode</p>
+                    <h2 class="menu-heading">How do you want to play?</h2>
+                    <p class="menu-copy">Pick a full local match or a single-player run against the bot.</p>
+                    <div class="menu-buttons">
+                        <button id="mode-local" class="menu-button primary" type="button">Local Two Player</button>
+                        <button id="mode-single" class="menu-button primary" type="button">Single Player</button>
+                        <button id="mode-online" class="menu-button secondary" type="button">Online (Soon)</button>
+                    </div>
+                    <p id="mode-message" class="status-text"></p>
+                    <button id="mode-back" class="menu-link" type="button">Back</button>
+                </div>
+            </section>
+
+            <section id="side-screen" class="screen" hidden>
+                <div class="panel">
+                    <p class="eyebrow">Single Player</p>
+                    <h2 class="menu-heading">Choose your side</h2>
+                    <p class="menu-copy">Pick the explorer you want to control. The other explorer becomes the AI bot.</p>
+                    <div class="menu-buttons">
+                        <button id="side-left" class="menu-button primary" type="button">Play as Left Explorer (WASD)</button>
+                        <button id="side-right" class="menu-button primary" type="button">Play as Right Explorer (Arrow Keys)</button>
+                    </div>
+                    <p class="choice-note">After this, you will choose the bot difficulty: easy, medium, or hard.</p>
+                    <button id="side-back" class="menu-link" type="button">Back</button>
+                </div>
+            </section>
+
+            <section id="difficulty-screen" class="screen" hidden>
+                <div class="panel">
+                    <p class="eyebrow">Single Player</p>
+                    <h2 class="menu-heading">Choose bot difficulty</h2>
+                    <p id="difficulty-copy" class="menu-copy">Pick how sharp the AI rival should be for this round.</p>
+                    <div class="menu-buttons">
+                        <button id="difficulty-easy" class="menu-button primary" type="button">Easy</button>
+                        <button id="difficulty-medium" class="menu-button primary" type="button">Medium</button>
+                        <button id="difficulty-hard" class="menu-button primary" type="button">Hard</button>
+                    </div>
+                    <p class="choice-note">Easy reacts slower, medium stays balanced, and hard races gems while dodging hazards much more aggressively.</p>
+                    <button id="difficulty-back" class="menu-link" type="button">Back</button>
+                </div>
+            </section>
+        </div>
+
         <div id="music-controls" role="group" aria-label="Music controls">
             <span id="music-status">Music: --</span>
             <button id="music-down" type="button" aria-label="Decrease music volume">Vol -</button>
@@ -94,8 +346,10 @@
             <button id="music-toggle" type="button">Pause</button>
             <button id="music-stop" type="button">Stop</button>
         </div>
-        <p id="hint">P1: WASD | P2: Arrow keys | Fullscreen: F | Restart: R</p>
+
+        <p id="hint">Press play to start.</p>
     </div>
+
     <script src="./game.js"></script>
 </body>
 </html>
