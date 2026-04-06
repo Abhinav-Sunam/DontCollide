@@ -26,15 +26,24 @@
         }
 
         body {
-            display: grid;
-            place-items: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-family: "Trebuchet MS", "Segoe UI", sans-serif;
         }
 
         #game-wrap {
+            width: min(100vw, calc((100vh - var(--touch-ui-space, 0px)) * 1.54));
+            max-width: 100vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #game-stage {
             position: relative;
-            width: min(100vw, calc(100vh * 1.54));
-            max-height: 100vh;
+            width: 100%;
         }
 
         #game-canvas {
@@ -207,6 +216,10 @@
             z-index: 2;
         }
 
+        #hint[hidden] {
+            display: none !important;
+        }
+
         #music-controls {
             position: absolute;
             right: 12px;
@@ -222,6 +235,10 @@
             font: 12px/1 "Trebuchet MS", "Segoe UI", sans-serif;
             z-index: 2;
             user-select: none;
+        }
+
+        #music-controls[hidden] {
+            display: none !important;
         }
 
         #music-status {
@@ -241,13 +258,212 @@
             transition: transform 140ms ease, background 140ms ease;
         }
 
+        #touch-controls[hidden] {
+            display: none !important;
+        }
+
+        #touch-controls {
+            display: none;
+            position: relative;
+            width: 100%;
+            min-height: 0;
+            flex: 1 1 50%;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 20px calc(26px + env(safe-area-inset-bottom));
+            box-sizing: border-box;
+            background:
+                radial-gradient(circle at 50% 14%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04) 28%, transparent 44%),
+                linear-gradient(180deg, #6b3cc1 0%, #4d2f97 52%, #341d6c 100%);
+            border-top: 4px solid rgba(255, 255, 255, 0.12);
+            overflow: hidden;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #touch-controls::before {
+            content: "";
+            position: absolute;
+            inset: auto -20% -28% -20%;
+            height: 60%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.14), transparent 66%);
+            opacity: 0.9;
+            pointer-events: none;
+        }
+
+        #touch-controls::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 22%),
+                radial-gradient(circle at 50% 110%, rgba(14, 9, 39, 0.5), transparent 48%);
+            pointer-events: none;
+        }
+
+        body.touch-ui {
+            align-items: stretch;
+            justify-content: stretch;
+            background: linear-gradient(180deg, #101827 0%, #101827 50%, #4d2f97 50%, #341d6c 100%);
+        }
+
+        body.touch-ui #game-wrap {
+            width: 100vw;
+            max-width: none;
+            height: 100dvh;
+            gap: 0;
+            align-items: stretch;
+        }
+
+        body.touch-ui #game-stage {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow: hidden;
+            padding-top: max(8px, env(safe-area-inset-top));
+            box-sizing: border-box;
+            background: #101827;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+        }
+
+        body.touch-ui #game-canvas {
+            width: 100%;
+            max-height: calc(48dvh - max(8px, env(safe-area-inset-top)));
+            height: auto;
+            box-shadow: none;
+        }
+
+        body.touch-ui #touch-controls {
+            display: flex;
+        }
+
+        #touch-controls-shell {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        #touch-joystick-wrap {
+            position: relative;
+            width: min(62vw, 250px);
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #touch-joystick {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #touch-joystick::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.18);
+            opacity: 0.7;
+        }
+
+        #touch-joystick-base {
+            position: absolute;
+            inset: 8%;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.88);
+            background:
+                radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08) 44%, rgba(255, 255, 255, 0.03) 68%, rgba(255, 255, 255, 0.12) 100%);
+            box-shadow:
+                inset 0 0 0 2px rgba(255, 255, 255, 0.22),
+                0 18px 34px rgba(7, 10, 34, 0.22);
+        }
+
+        #touch-joystick-stick {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 42%;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.9);
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.14) 52%, rgba(255, 255, 255, 0.06) 100%);
+            box-shadow:
+                0 12px 26px rgba(7, 10, 34, 0.28),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+            transform: translate(-50%, -50%);
+            transition: transform 70ms linear, box-shadow 120ms ease;
+        }
+
+        #touch-joystick.is-active #touch-joystick-stick {
+            box-shadow:
+                0 18px 30px rgba(7, 10, 34, 0.34),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+        }
+
+        #touch-joystick.is-disabled {
+            opacity: 0.58;
+        }
+
+        #touch-gameover-actions[hidden] {
+            display: none !important;
+        }
+
+        #touch-gameover-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .touch-action-button {
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 999px;
+            min-width: 108px;
+            min-height: 44px;
+            padding: 0 18px;
+            background: rgba(16, 24, 39, 0.28);
+            color: #f8fafc;
+            font: 700 15px/1 "Trebuchet MS", "Segoe UI", sans-serif;
+            backdrop-filter: blur(4px);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .touch-action-button:active {
+            transform: scale(0.98);
+            background: rgba(16, 24, 39, 0.42);
+        }
+
         @media (max-width: 780px) {
+            body {
+                padding: 0;
+            }
+
             .panel {
                 padding: 22px 18px 18px;
+                max-height: calc(100vh - 32px);
+                overflow: auto;
             }
 
             .menu-copy {
                 font-size: 14px;
+            }
+
+            .screen {
+                position: fixed;
+                inset: 0;
+                padding: 16px;
             }
 
             #music-controls {
@@ -256,98 +472,144 @@
                 bottom: 12px;
                 justify-content: center;
                 flex-wrap: wrap;
+                gap: 4px;
+                padding: 6px 7px;
+                font-size: 11px;
             }
 
             #hint {
                 left: 12px;
                 right: 12px;
-                bottom: 86px;
+                bottom: 78px;
+                padding: 6px 8px;
+                font-size: 11px;
+            }
+
+            #music-status {
+                min-width: 78px;
+            }
+
+            #music-controls button {
+                padding: 4px 6px;
+                font-size: 11px;
+            }
+
+            #touch-controls {
+                padding: 18px 18px calc(22px + env(safe-area-inset-bottom));
+            }
+
+            #touch-joystick-wrap {
+                width: min(58vw, 224px);
+            }
+
+            .touch-action-button {
+                min-width: 102px;
+                min-height: 42px;
+                padding: 0 16px;
+                font-size: 14px;
             }
         }
     </style>
 </head>
 <body>
     <div id="game-wrap">
-        <canvas id="game-canvas" width="1512" height="982"></canvas>
+        <div id="game-stage">
+            <canvas id="game-canvas" width="1512" height="982"></canvas>
 
-        <div id="overlay" aria-live="polite">
-            <section id="loading-screen" class="screen loading-screen">
-                <div class="panel">
-                    <p class="eyebrow">Preparing Arena</p>
-                    <h1 class="menu-title">DontCollide</h1>
-                    <p id="loading-copy" class="menu-copy">Loading visuals 0 / 5</p>
-                    <div class="progress-track">
-                        <div id="loading-bar"></div>
+            <div id="overlay" aria-live="polite">
+                <section id="loading-screen" class="screen loading-screen">
+                    <div class="panel">
+                        <p class="eyebrow">Preparing Arena</p>
+                        <h1 class="menu-title">DontCollide</h1>
+                        <p id="loading-copy" class="menu-copy">Loading visuals 0 / 5</p>
+                        <div class="progress-track">
+                            <div id="loading-bar"></div>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <section id="start-screen" class="screen" hidden>
-                <div class="panel">
-                    <p class="eyebrow">Gem Rush Arena</p>
-                    <h1 class="menu-title">DontCollide</h1>
-                    <p class="menu-copy">Collect gems, dodge collisions, and pick how you want to play.</p>
-                    <div class="menu-buttons">
-                        <button id="start-play" class="menu-button primary" type="button">Play</button>
+                <section id="start-screen" class="screen" hidden>
+                    <div class="panel">
+                        <p class="eyebrow">Gem Rush Arena</p>
+                        <h1 class="menu-title">DontCollide</h1>
+                        <p class="menu-copy">Collect gems, dodge collisions, and pick how you want to play.</p>
+                        <div class="menu-buttons">
+                            <button id="start-play" class="menu-button primary" type="button">Play</button>
+                        </div>
+                        <p class="choice-note">Local mode is ready. Single player adds a gem-hunting AI rival. Online stays visible as a placeholder for later.</p>
                     </div>
-                    <p class="choice-note">Local mode is ready. Single player adds a gem-hunting AI rival. Online stays visible as a placeholder for later.</p>
-                </div>
-            </section>
+                </section>
 
-            <section id="mode-screen" class="screen" hidden>
-                <div class="panel">
-                    <p class="eyebrow">Choose a Mode</p>
-                    <h2 class="menu-heading">How do you want to play?</h2>
-                    <p class="menu-copy">Pick a full local match or a single-player run against the bot.</p>
-                    <div class="menu-buttons">
-                        <button id="mode-local" class="menu-button primary" type="button">Local Two Player</button>
-                        <button id="mode-single" class="menu-button primary" type="button">Single Player</button>
-                        <button id="mode-online" class="menu-button secondary" type="button">Online (Soon)</button>
+                <section id="mode-screen" class="screen" hidden>
+                    <div class="panel">
+                        <p class="eyebrow">Choose a Mode</p>
+                        <h2 class="menu-heading">How do you want to play?</h2>
+                        <p class="menu-copy">Pick a full local match or a single-player run against the bot.</p>
+                        <div class="menu-buttons">
+                            <button id="mode-local" class="menu-button primary" type="button">Local Two Player</button>
+                            <button id="mode-single" class="menu-button primary" type="button">Single Player</button>
+                            <button id="mode-online" class="menu-button secondary" type="button">Online (Soon)</button>
+                        </div>
+                        <p id="mode-message" class="status-text"></p>
+                        <button id="mode-back" class="menu-link" type="button">Back</button>
                     </div>
-                    <p id="mode-message" class="status-text"></p>
-                    <button id="mode-back" class="menu-link" type="button">Back</button>
-                </div>
-            </section>
+                </section>
 
-            <section id="side-screen" class="screen" hidden>
-                <div class="panel">
-                    <p class="eyebrow">Single Player</p>
-                    <h2 class="menu-heading">Choose your side</h2>
-                    <p class="menu-copy">Pick the explorer you want to control. The other explorer becomes the AI bot.</p>
-                    <div class="menu-buttons">
-                        <button id="side-left" class="menu-button primary" type="button">Play as Left Explorer (WASD)</button>
-                        <button id="side-right" class="menu-button primary" type="button">Play as Right Explorer (Arrow Keys)</button>
+                <section id="side-screen" class="screen" hidden>
+                    <div class="panel">
+                        <p class="eyebrow">Single Player</p>
+                        <h2 class="menu-heading">Choose your side</h2>
+                        <p class="menu-copy">Pick the explorer you want to control. The other explorer becomes the AI bot.</p>
+                        <div class="menu-buttons">
+                            <button id="side-left" class="menu-button primary" type="button">Play as Left Explorer (WASD)</button>
+                            <button id="side-right" class="menu-button primary" type="button">Play as Right Explorer (Arrow Keys)</button>
+                        </div>
+                        <p class="choice-note">After this, you will choose the bot difficulty: easy, medium, or hard.</p>
+                        <button id="side-back" class="menu-link" type="button">Back</button>
                     </div>
-                    <p class="choice-note">After this, you will choose the bot difficulty: easy, medium, or hard.</p>
-                    <button id="side-back" class="menu-link" type="button">Back</button>
-                </div>
-            </section>
+                </section>
 
-            <section id="difficulty-screen" class="screen" hidden>
-                <div class="panel">
-                    <p class="eyebrow">Single Player</p>
-                    <h2 class="menu-heading">Choose bot difficulty</h2>
-                    <p id="difficulty-copy" class="menu-copy">Pick how sharp the AI rival should be for this round.</p>
-                    <div class="menu-buttons">
-                        <button id="difficulty-easy" class="menu-button primary" type="button">Easy</button>
-                        <button id="difficulty-medium" class="menu-button primary" type="button">Medium</button>
-                        <button id="difficulty-hard" class="menu-button primary" type="button">Hard</button>
+                <section id="difficulty-screen" class="screen" hidden>
+                    <div class="panel">
+                        <p class="eyebrow">Single Player</p>
+                        <h2 class="menu-heading">Choose bot difficulty</h2>
+                        <p id="difficulty-copy" class="menu-copy">Pick how sharp the AI rival should be for this round.</p>
+                        <div class="menu-buttons">
+                            <button id="difficulty-easy" class="menu-button primary" type="button">Easy</button>
+                            <button id="difficulty-medium" class="menu-button primary" type="button">Medium</button>
+                            <button id="difficulty-hard" class="menu-button primary" type="button">Hard</button>
+                        </div>
+                        <p class="choice-note">Easy reacts slower, medium stays balanced, and hard races gems while dodging hazards much more aggressively.</p>
+                        <button id="difficulty-back" class="menu-link" type="button">Back</button>
                     </div>
-                    <p class="choice-note">Easy reacts slower, medium stays balanced, and hard races gems while dodging hazards much more aggressively.</p>
-                    <button id="difficulty-back" class="menu-link" type="button">Back</button>
-                </div>
-            </section>
+                </section>
+            </div>
+
+            <div id="music-controls" role="group" aria-label="Music controls">
+                <span id="music-status">Music: --</span>
+                <button id="music-down" type="button" aria-label="Decrease music volume">Vol -</button>
+                <button id="music-up" type="button" aria-label="Increase music volume">Vol +</button>
+                <button id="music-toggle" type="button">Pause</button>
+                <button id="music-stop" type="button">Stop</button>
+            </div>
+
+            <p id="hint">Press play to start.</p>
         </div>
 
-        <div id="music-controls" role="group" aria-label="Music controls">
-            <span id="music-status">Music: --</span>
-            <button id="music-down" type="button" aria-label="Decrease music volume">Vol -</button>
-            <button id="music-up" type="button" aria-label="Increase music volume">Vol +</button>
-            <button id="music-toggle" type="button">Pause</button>
-            <button id="music-stop" type="button">Stop</button>
+        <div id="touch-controls" role="group" aria-label="Touch controls" hidden>
+            <div id="touch-controls-shell">
+                <div id="touch-joystick-wrap">
+                    <div id="touch-joystick" aria-label="Movement joystick">
+                        <div id="touch-joystick-base"></div>
+                        <div id="touch-joystick-stick"></div>
+                    </div>
+                </div>
+                <div id="touch-gameover-actions" hidden>
+                    <button id="touch-restart" class="touch-action-button" type="button">Replay</button>
+                    <button id="touch-menu" class="touch-action-button" type="button">Menu</button>
+                </div>
+            </div>
         </div>
-
-        <p id="hint">Press play to start.</p>
     </div>
 
     <script src="./game.js"></script>

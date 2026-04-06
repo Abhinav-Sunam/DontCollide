@@ -31,6 +31,12 @@ const ui = {
   musicUp: document.getElementById("music-up"),
   musicToggle: document.getElementById("music-toggle"),
   musicStop: document.getElementById("music-stop"),
+  touchControls: document.getElementById("touch-controls"),
+  touchJoystick: document.getElementById("touch-joystick"),
+  touchJoystickStick: document.getElementById("touch-joystick-stick"),
+  touchGameoverActions: document.getElementById("touch-gameover-actions"),
+  touchRestart: document.getElementById("touch-restart"),
+  touchMenu: document.getElementById("touch-menu"),
 };
 
 const SCREEN_WIDTH = 1512;
@@ -41,6 +47,8 @@ const HUMAN_SPEED = 300;
 const GEM_SPAWN_MIN_MS = 3000;
 const GEM_SPAWN_MAX_MS = 5000;
 const MENU_PREVIEW_GEMS = 4;
+const TOUCH_JOYSTICK_DEAD_ZONE = 0.18;
+const TOUCH_JOYSTICK_TRAVEL_RATIO = 0.24;
 const LOGO_RECT = { x: (SCREEN_WIDTH - 750) / 2, y: 10, w: 750, h: 188 };
 const ARENA_CENTER = { x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 };
 const ROCK_TEMPLATES = [
@@ -141,6 +149,16 @@ const state = {
 
 const keys = new Set();
 let audioContext = null;
+const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
+const touchState = {
+  available: false,
+  active: false,
+  pointerId: null,
+  center: { x: 0, y: 0 },
+  maxStickPx: 0,
+  vector: { x: 0, y: 0 },
+  stickOffset: { x: 0, y: 0 },
+};
 
 const music = {
   audio: new Audio("song.mp3"),
@@ -257,6 +275,9 @@ function isGameplayState() {
 
 function setAppMode(nextMode) {
   state.appMode = nextMode;
+  if (nextMode !== "playing") {
+    clearTouchInput();
+  }
   syncUiState();
   draw();
 }
@@ -268,11 +289,15 @@ function syncUiState() {
   ui.modeScreen.hidden = state.appMode !== "mode_select";
   ui.sideScreen.hidden = state.appMode !== "side_select";
   ui.difficultyScreen.hidden = state.appMode !== "difficulty_select";
-  ui.musicControls.hidden = !state.assetsReady;
-  ui.hint.hidden = !isGameplayState();
+  ui.musicControls.hidden = !state.assetsReady || touchState.available;
+  ui.hint.hidden = !isGameplayState() || touchState.available;
   ui.hint.textContent = getHintText();
   ui.modeMessage.textContent = state.appMode === "mode_select" ? state.menuMessage : "";
   ui.difficultyCopy.textContent = `You picked ${getSelectedSideLabel()}. Now choose the bot difficulty.`;
+  ui.touchControls.hidden = !shouldShowTouchControls();
+  ui.touchGameoverActions.hidden = !(touchState.available && state.appMode === "game_over");
+  ui.touchJoystick.classList.toggle("is-disabled", state.appMode !== "playing");
+  updateTouchJoystickUi();
   updateMusicUi();
 }
 
@@ -361,6 +386,7 @@ function resetArenaState({ preview }) {
   state.gemSpawnTimerMs = 0;
   state.nextGemSpawnMs = chooseNextGemSpawnMs();
   keys.clear();
+  clearTouchInput();
 
   const startingGemCount = preview ? MENU_PREVIEW_GEMS : 1;
   for (let i = 0; i < startingGemCount; i += 1) {
@@ -383,6 +409,34 @@ function getHintText() {
 
 function getSelectedSideLabel() {
   return state.singlePlayerSide === "left" ? "Left Explorer (WASD)" : "Right Explorer (Arrow Keys)";
+}
+
+function shouldUseTouchUi() {
+  return window.innerWidth <= 900 || coarsePointerQuery.matches;
+}
+
+function getTouchControlSide() {
+  if (state.gameMode === "single") return state.singlePlayerSide;
+  return "left";
+}
+
+function shouldShowTouchControls() {
+  return touchState.available && isGameplayState();
+}
+
+function updateResponsiveUi() {
+  touchState.available = shouldUseTouchUi();
+  if (!touchState.available) {
+    clearTouchInput();
+  }
+  ui.body.classList.toggle("touch-ui", touchState.available);
+  syncUiState();
+  if (touchState.available && shouldShowTouchControls()) {
+    requestAnimationFrame(() => {
+      measureTouchJoystick();
+      updateTouchJoystickUi();
+    });
+  }
 }
 
 function getControllerForSide(side) {
@@ -642,12 +696,14 @@ function chooseSafeAiDirection(bot, desired, targetPoint, config) {
 
 function movePlayer(player, directionX, directionY, dt, speed) {
   const normalized = normalizeVector({ x: directionX, y: directionY });
-  player.x += normalized.x * speed * dt;
-  player.y += normalized.y * speed * dt;
+  const magnitude = Math.min(1, Math.hypot(directionX, directionY));
+  if (!magnitude) return;
+  player.x += normalized.x * speed * dt * magnitude;
+  player.y += normalized.y * speed * dt * magnitude;
   clampPlayer(player);
 }
 
-function getInputVectorForScheme(scheme) {
+function getKeyboardVectorForScheme(scheme) {
   let x = 0;
   let y = 0;
 
@@ -664,6 +720,86 @@ function getInputVectorForScheme(scheme) {
   }
 
   return { x, y };
+}
+
+function getTouchVector() {
+  return { ...touchState.vector };
+}
+
+function updateTouchJoystickUi() {
+  const offsetX = touchState.stickOffset.x.toFixed(2);
+  const offsetY = touchState.stickOffset.y.toFixed(2);
+  ui.touchJoystick.classList.toggle("is-active", touchState.active && state.appMode === "playing");
+  ui.touchJoystickStick.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+}
+
+function measureTouchJoystick() {
+  const rect = ui.touchJoystick.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  touchState.center.x = rect.left + rect.width / 2;
+  touchState.center.y = rect.top + rect.height / 2;
+  touchState.maxStickPx = Math.max(34, rect.width * TOUCH_JOYSTICK_TRAVEL_RATIO);
+}
+
+function resetTouchJoystick() {
+  if (touchState.pointerId !== null && ui.touchJoystick.hasPointerCapture?.(touchState.pointerId)) {
+    ui.touchJoystick.releasePointerCapture(touchState.pointerId);
+  }
+  touchState.active = false;
+  touchState.pointerId = null;
+  touchState.vector.x = 0;
+  touchState.vector.y = 0;
+  touchState.stickOffset.x = 0;
+  touchState.stickOffset.y = 0;
+  updateTouchJoystickUi();
+}
+
+function setTouchVectorFromPoint(clientX, clientY) {
+  measureTouchJoystick();
+  const maxStickPx = touchState.maxStickPx;
+  if (!maxStickPx) {
+    resetTouchJoystick();
+    return;
+  }
+
+  const rawX = clientX - touchState.center.x;
+  const rawY = clientY - touchState.center.y;
+  const distance = Math.hypot(rawX, rawY);
+  const clampedDistance = Math.min(distance, maxStickPx);
+  const direction = distance > 0.001 ? { x: rawX / distance, y: rawY / distance } : { x: 0, y: 0 };
+  const magnitude = Math.min(1, distance / maxStickPx);
+  const analogMagnitude =
+    magnitude < TOUCH_JOYSTICK_DEAD_ZONE ? 0 : (magnitude - TOUCH_JOYSTICK_DEAD_ZONE) / (1 - TOUCH_JOYSTICK_DEAD_ZONE);
+
+  touchState.stickOffset.x = direction.x * clampedDistance;
+  touchState.stickOffset.y = direction.y * clampedDistance;
+  touchState.vector.x = direction.x * analogMagnitude;
+  touchState.vector.y = direction.y * analogMagnitude;
+  updateTouchJoystickUi();
+}
+
+function clearTouchInput() {
+  resetTouchJoystick();
+}
+
+function usesTouchControlsForSide(side) {
+  if (!touchState.available) return false;
+  if (state.gameMode === "single") return state.singlePlayerSide === side;
+  return side === "left";
+}
+
+function getHumanInputVector(side) {
+  const keyboardVector = getKeyboardVectorForScheme(side === "left" ? "wasd" : "arrows");
+  if (!usesTouchControlsForSide(side)) {
+    return keyboardVector;
+  }
+
+  const touchVector = getTouchVector();
+  if (touchVector.x || touchVector.y) {
+    return touchVector;
+  }
+
+  return keyboardVector;
 }
 
 function spawnGem() {
@@ -809,11 +945,11 @@ function updateControllers(dt) {
   const rightController = getControllerForSide("right");
 
   if (leftController === "human") {
-    const input = getInputVectorForScheme("wasd");
+    const input = getHumanInputVector("left");
     movePlayer(state.player1, input.x, input.y, dt, HUMAN_SPEED);
   }
   if (rightController === "human") {
-    const input = getInputVectorForScheme("arrows");
+    const input = getHumanInputVector("right");
     movePlayer(state.player2, input.x, input.y, dt, HUMAN_SPEED);
   }
   if (leftController === "ai") {
@@ -1055,6 +1191,57 @@ function setupMenuUi() {
   });
 }
 
+function setupTouchControls() {
+  const startJoystick = (event) => {
+    if (!touchState.available || state.appMode !== "playing") return;
+    if (touchState.pointerId !== null && touchState.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    primeAudioForSession();
+    measureTouchJoystick();
+    touchState.active = true;
+    touchState.pointerId = event.pointerId;
+    ui.touchJoystick.setPointerCapture?.(event.pointerId);
+    setTouchVectorFromPoint(event.clientX, event.clientY);
+  };
+
+  const moveJoystick = (event) => {
+    if (!touchState.active || touchState.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    setTouchVectorFromPoint(event.clientX, event.clientY);
+  };
+
+  const stopJoystick = (event) => {
+    if (touchState.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    resetTouchJoystick();
+  };
+
+  ui.touchJoystick.addEventListener("pointerdown", startJoystick);
+  ui.touchJoystick.addEventListener("pointermove", moveJoystick);
+  ui.touchJoystick.addEventListener("pointerup", stopJoystick);
+  ui.touchJoystick.addEventListener("pointercancel", stopJoystick);
+  ui.touchJoystick.addEventListener("lostpointercapture", () => {
+    if (touchState.active) {
+      resetTouchJoystick();
+    }
+  });
+  ui.touchJoystick.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+
+  ui.touchRestart.addEventListener("click", () => {
+    if (isGameplayState()) {
+      restartCurrentRound();
+    }
+  });
+
+  ui.touchMenu.addEventListener("click", () => {
+    if (isGameplayState()) {
+      returnToStartMenu();
+    }
+  });
+}
+
 function drawSprite(image, x, y, w, h, fallbackColor) {
   if (isLoaded(image)) {
     ctx.drawImage(image, x, y, w, h);
@@ -1222,7 +1409,18 @@ window.addEventListener("keyup", (event) => {
 
 window.addEventListener("blur", () => {
   keys.clear();
+  clearTouchInput();
 });
+
+window.addEventListener("resize", () => {
+  updateResponsiveUi();
+});
+
+if (typeof coarsePointerQuery.addEventListener === "function") {
+  coarsePointerQuery.addEventListener("change", updateResponsiveUi);
+} else if (typeof coarsePointerQuery.addListener === "function") {
+  coarsePointerQuery.addListener(updateResponsiveUi);
+}
 
 window.render_game_to_text = () =>
   JSON.stringify({
@@ -1255,6 +1453,17 @@ window.render_game_to_text = () =>
       targetGemIndex: state.aiTargetGemIndex,
       difficulty: getDifficultyConfig().label,
       speed: getDifficultyConfig().speed,
+    },
+    touch: {
+      available: touchState.available,
+      visible: shouldShowTouchControls(),
+      side: getTouchControlSide(),
+      active: touchState.active,
+      vector: {
+        x: Number(touchState.vector.x.toFixed(3)),
+        y: Number(touchState.vector.y.toFixed(3)),
+      },
+      gameOverActionsVisible: touchState.available && state.appMode === "game_over",
     },
     menuMessage: state.menuMessage,
     hint: getHintText(),
@@ -1351,6 +1560,8 @@ function frame(now) {
 
 setupMenuUi();
 setupMusicControls();
+setupTouchControls();
 updateLoadingUi();
+updateResponsiveUi();
 syncUiState();
 requestAnimationFrame(frame);
